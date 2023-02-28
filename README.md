@@ -19,7 +19,7 @@ To use this repository, you will need:
 - Unity 3D game engine (version 2021.3.19.f1)
 
 ## Getting Started
-To get started with this repository, follow the step-by-step instructions provided in the "Instructions" folder. This will guide you through the setup of the Azure Kinect cameras, installation of the Depthkit software, and recording and processing of volumetric captures.
+To get started with this repository, follow the step-by-step instructions provided in the "Instruction" folder. This will guide you through the setup of the Azure Kinect cameras, installation of the Depthkit software, and recording and processing of volumetric captures.
 
 Once you have captured and processed your volumetric data, you can import it into Unity using the provided sample project. The sample project will allow you to play back the volumetric capture in real-time in your Unity scene.
 
