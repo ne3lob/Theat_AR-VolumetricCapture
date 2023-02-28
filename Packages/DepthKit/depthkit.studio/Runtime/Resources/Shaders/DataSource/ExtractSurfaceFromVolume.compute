@@ -1,0 +1,356 @@
+/************************************************************************************
+
+Depthkit Unity SDK License v1
+Copyright 2016-2020 Scatter All Rights reserved.
+
+Licensed under the Scatter Software Development Kit License Agreement (the "License");
+you may not use this SDK except in compliance with the License,
+which is provided at the time of installation or download,
+or which otherwise accompanies this software in either electronic or hard copy form.
+
+You may obtain a copy of the License at http://www.depthkit.tv/license-agreement-v1
+
+Unless required by applicable law or agreed to in writing,
+the SDK distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+************************************************************************************/
+
+#pragma kernel ExtractSurfaceFromVolume8x8x8 SDF_READ_ONLY GROUP_SIZE=8 DK_CORE_PACKED_TRIANGLE
+#pragma kernel ExtractSurfaceFromVolume4x4x4 SDF_READ_ONLY GROUP_SIZE=4 DK_CORE_PACKED_TRIANGLE
+#pragma kernel ExtractSurfaceFromVolumeWithUVs8x8x8 SDF_READ_ONLY GROUP_SIZE=8 DK_CORE_PACKED_TRIANGLE DK_TEXTURE_ATLAS
+#pragma kernel ExtractSurfaceFromVolumeWithUVs4x4x4 SDF_READ_ONLY GROUP_SIZE=4 DK_CORE_PACKED_TRIANGLE DK_TEXTURE_ATLAS
+
+static const uint GROUP_THREAD_COUNT = GROUP_SIZE * GROUP_SIZE * GROUP_SIZE;
+static const uint TILE_BORDER = 2;
+static const uint TILE_SIZE = GROUP_SIZE + TILE_BORDER * 2;
+static const uint TILE_VOXEL_COUNT = TILE_SIZE * TILE_SIZE * TILE_SIZE;
+
+//sdf samples with a border of 1 to compute normals for edges
+groupshared float g_sdfSamples[TILE_VOXEL_COUNT];
+
+static const float epsilon = 1e-5;
+
+#include "Packages/nyc.scatter.depthkit.studio/Runtime/Resources/Shaders/DataSource/StudioMeshSourceCommon.cginc"
+#include "Packages/nyc.scatter.depthkit.core/Runtime/Resources/Shaders/Includes/Depthkit.cginc"
+#include "Packages/nyc.scatter.depthkit.studio/Runtime/Resources/Shaders/Includes/DepthkitStudioUniforms.cginc"
+#include "Packages/nyc.scatter.depthkit.core/Runtime/Resources/Shaders/Includes/CoreVertex.cginc"
+#include "Packages/nyc.scatter.depthkit.core/Runtime/Resources/Shaders/Includes/CoreTriangle.cginc"
+
+#ifdef DK_TEXTURE_ATLAS
+#include "Packages/nyc.scatter.depthkit.studio/Runtime/Resources/Shaders/Includes/DepthkitStudio.cginc"
+#endif
+
+static const uint triangleConnectionTableSize = 256 * 16;
+static const uint triangleOffsetsSize = 72;
+static const uint numberOfTrianglesSize = 256;
+static const uint triangleConnectionTableOffset = 0;
+static const uint triangleOffsetsOffset = triangleConnectionTableSize;
+static const uint numberOfTrianglesOffset = triangleConnectionTableSize + triangleOffsetsSize;
+
+AppendStructuredBuffer<Triangle> _TriangleBuffer; // position only output
+StructuredBuffer<int> _TriangleDataBuffer;
+
+// cube offsets represent a morton ordering of cube locations in a 8 voxel 3d grid
+//
+// front slice  back slice
+// +---+---+    +---+---+
+// | 2 | 3 |    | 6 | 7 |
+// +---+---+    +---+---+
+// | 0 | 1 |    | 4 | 5 |
+// +---+---+    +---+---+
+// 
+static const int3 cubeOffsets[11] =
+{
+    { 0, 0, 0 }, //0
+    { 1, 0, 0 }, //1
+    { 0, 0, 1 }, //2
+    { 1, 0, 1 }, //3
+    { 0, 1, 0 }, //4
+    { 1, 1, 0 }, //5
+    { 0, 1, 1 }, //6
+    { 1, 1, 1 }, //7
+    { -1, 0, 0 }, //8
+    { 0, -1, 0 }, //9
+    { 0, 0, -1 }, //10
+};
+
+static const uint possibleTriangleCounts[6] =
+{
+    0, 1, 2, 3, 4, 5
+};
+
+float _TriangleCullingThreshold;
+float _SdfThreshold;
+
+// encode the cube number of triangles index as a bitfield of the cells with a valid sdf value ( > 0 in our case)
+// non-morten ordered cube offsets
+uint classifyCube(uint3 id)
+{
+    float currentVoxSdf = g_sdfSamples[toIndex3D((int3) id, (uint3) TILE_SIZE)];
+    if (currentVoxSdf > Invalid_Sdf_compare) return 0;
+    float voxOffset1 = g_sdfSamples[toIndex3D((int3) id + cubeOffsets[1], (uint3) TILE_SIZE)];
+    if (voxOffset1 > Invalid_Sdf_compare) return 0;
+    float voxOffset3 = g_sdfSamples[toIndex3D((int3) id + cubeOffsets[3], (uint3) TILE_SIZE)];
+    if (voxOffset3 > Invalid_Sdf_compare) return 0;
+    float voxOffset2 = g_sdfSamples[toIndex3D((int3) id + cubeOffsets[2], (uint3) TILE_SIZE)];
+    if (voxOffset2 > Invalid_Sdf_compare) return 0;
+    float voxOffset4 = g_sdfSamples[toIndex3D((int3) id + cubeOffsets[4], (uint3) TILE_SIZE)];
+    if (voxOffset4 > Invalid_Sdf_compare) return 0;
+    float voxOffset5 = g_sdfSamples[toIndex3D((int3) id + cubeOffsets[5], (uint3) TILE_SIZE)];
+    if (voxOffset5 > Invalid_Sdf_compare) return 0;
+    float voxOffset7 = g_sdfSamples[toIndex3D((int3) id + cubeOffsets[7], (uint3) TILE_SIZE)];
+    if (voxOffset7 > Invalid_Sdf_compare) return 0;
+    float voxOffset6 = g_sdfSamples[toIndex3D((int3) id + cubeOffsets[6], (uint3) TILE_SIZE)];
+    if (voxOffset6 > Invalid_Sdf_compare) return 0;
+
+    const uint cubeindexBitfield =
+        ((currentVoxSdf > _SdfThreshold) << 0) |
+        ((voxOffset1 > _SdfThreshold) << 1) |
+        ((voxOffset3 > _SdfThreshold) << 2) |
+        ((voxOffset2 > _SdfThreshold) << 3) |
+        ((voxOffset4 > _SdfThreshold) << 4) |
+        ((voxOffset5 > _SdfThreshold) << 5) |
+        ((voxOffset7 > _SdfThreshold) << 6) |
+        ((voxOffset6 > _SdfThreshold) << 7);
+    
+    return cubeindexBitfield;
+}
+
+float3 sdfNormal(uint3 id)
+{
+    float centerSdf = g_sdfSamples[toIndex3D((int3) id, (uint3) TILE_SIZE)];
+    return normalize(
+        (centerSdf - clamp(g_sdfSamples[toIndex3D((int3) id + cubeOffsets[1], (uint3) TILE_SIZE)], -_SdfSensitivity, _SdfSensitivity)) * (float3) cubeOffsets[1] +
+        (centerSdf - clamp(g_sdfSamples[toIndex3D((int3) id + cubeOffsets[4], (uint3) TILE_SIZE)], -_SdfSensitivity, _SdfSensitivity)) * (float3) cubeOffsets[4] +
+        (centerSdf - clamp(g_sdfSamples[toIndex3D((int3) id + cubeOffsets[2], (uint3) TILE_SIZE)], -_SdfSensitivity, _SdfSensitivity)) * (float3) cubeOffsets[2] +
+        (centerSdf - clamp(g_sdfSamples[toIndex3D((int3) id + cubeOffsets[8], (uint3) TILE_SIZE)], -_SdfSensitivity, _SdfSensitivity)) * (float3) cubeOffsets[8] +
+        (centerSdf - clamp(g_sdfSamples[toIndex3D((int3) id + cubeOffsets[9], (uint3) TILE_SIZE)], -_SdfSensitivity, _SdfSensitivity)) * (float3) cubeOffsets[9] +
+        (centerSdf - clamp(g_sdfSamples[toIndex3D((int3) id + cubeOffsets[10], (uint3) TILE_SIZE)], -_SdfSensitivity, _SdfSensitivity)) * (float3) cubeOffsets[10]);
+}
+
+
+#ifdef DK_TEXTURE_ATLAS
+
+int GetHighestWeightedPerspectiveForVert(inout Vertex vert, out float weight)
+{
+    float highestWeight = 0;
+    int highestWeightPerspective = -1;
+    for (uint perspectiveIndex = 0; perspectiveIndex < (uint) _PerspectivesCount; perspectiveIndex++)
+    {
+#ifdef DK_UNTEXTURED_FRAGMENT_INFER
+        float4 fallbackColor1 = float4(0, 0, 0, 0);
+        float4 fallbackColor2 = float4(0, 0, 0, 0);
+#endif
+
+        for (uint perspectiveIndex = 0; perspectiveIndex < (uint) _PerspectivesCount; perspectiveIndex++)
+        {
+            float3 surfaceToEyeDir = dkGetDepthCameraDirection(perspectiveIndex) * -1;
+            float4 accumulatedColor = float4(0, 0, 0, 0);
+#ifdef DK_UNTEXTURED_FRAGMENT_INFER
+            accumulatedColor += GetCamContribution(perspectiveIndex, surfaceToEyeDir, vert.position, vert.normal, fallbackColor1, fallbackColor2);
+#else
+            accumulatedColor += GetCamContribution(perspectiveIndex, surfaceToEyeDir, vert.position, vert.normal);
+#endif
+            if (accumulatedColor.w > highestWeight)
+            {
+                highestWeight = accumulatedColor.w;
+                highestWeightPerspective = perspectiveIndex;
+            }
+        }
+    }
+    weight = highestWeight;
+    vert.uv.z = (highestWeightPerspective + 1) / (_PerspectivesCount + 1.0f);
+    return highestWeightPerspective;
+}
+
+uint GetHighestWeightedPerspectiveForTriangle(inout Vertex v1, inout Vertex v2, inout Vertex v3)
+{
+    float w1 = 0, w2 = 0, w3 = 0;
+    int id1 = GetHighestWeightedPerspectiveForVert(v1, w1);
+    int id2 = GetHighestWeightedPerspectiveForVert(v2, w2);
+    int id3 = GetHighestWeightedPerspectiveForVert(v3, w3);
+    float z = min(v1.uv.z, min(v2.uv.z, v3.uv.z));
+    v1.uv.z = v2.uv.z = v3.uv.z = z;
+    float maxW = max(w1, max(w2, w3));
+    if (maxW > 0) {
+        if (maxW == w1) return id1;
+        else if (maxW == w2) return id2;
+        else return id3;
+    }
+    return 0;
+}
+
+void fillAtlasUVForVertex(uint perspectiveIndex, inout Vertex vert)
+{
+    float2 perspectiveUV, depthUV, colorUV;
+    float3 depthViewSpacePos;
+    dkWorldToPerspectiveUV(perspectiveIndex, vert.position, perspectiveUV, depthUV, colorUV, depthViewSpacePos);
+
+    int2 perspectiveResolution = dkGetPerspectiveResolution();
+    float scale = 1.0f / (float)_PerspectivesCount;
+
+    if (perspectiveResolution.x > perspectiveResolution.y)
+    {
+        perspectiveUV.y = perspectiveUV.y * scale + scale * perspectiveIndex;
+        perspectiveResolution.y *= _PerspectivesCount;
+    }
+    else
+    {
+        perspectiveUV.x = perspectiveUV.x * scale + scale * perspectiveIndex;
+        perspectiveResolution.x *= _PerspectivesCount;
+    }
+
+    int borderPixels = min(perspectiveResolution.x, perspectiveResolution.y) * 0.1;
+    float2 border = borderPixels / (float)perspectiveResolution;
+
+    perspectiveUV = border + perspectiveUV * (1 - border*2);
+
+    vert.uv = float4(perspectiveUV, vert.uv.z, 0);
+}
+
+void fillAtlasUVsForTriangle(inout Triangle t)
+{
+    int perspectiveIndex = GetHighestWeightedPerspectiveForTriangle(t.vertex[0], t.vertex[1], t.vertex[2]);
+    fillAtlasUVForVertex(perspectiveIndex, t.vertex[0]);
+    fillAtlasUVForVertex(perspectiveIndex, t.vertex[1]);
+    fillAtlasUVForVertex(perspectiveIndex, t.vertex[2]);
+}
+
+#endif // DK_TEXTURE_ATLAS
+
+bool MCPointCompare(float3 left, float3 right)
+{
+    if (left.x < right.x)
+        return true;
+    else if (left.x > right.x)
+        return false;
+
+    if (left.y < right.y)
+        return true;
+    else if (left.y > right.y)
+        return false;
+
+    if (left.z < right.z)
+        return true;
+    else if (left.z > right.z)
+        return false;
+
+    return false;
+}
+
+// This interpolation function handles issues with normal linear interpolation that lead to cracks
+// see the note in http://paulbourke.net/geometry/polygonise/
+// > It has been suggested that the interpolation should be handled as shown here,
+// > that this solves an issue of small cracks in the isosurface.
+// > http://paulbourke.net/geometry/polygonise/interp.c
+float3 MCLinearInterp(float3 p0, float3 p1, float value0, float value1, float isolevel)
+{
+    if (MCPointCompare(p1, p0))
+    {
+        float3 temp;
+        temp = p0;
+        p0 = p1;
+        p1 = temp;
+        temp.x = value0;
+        value0 = value1;
+        value1 = temp.x;
+    }
+
+    if (abs(value0 - value1) > epsilon) {
+        return p0 + (p1 - p0) * (isolevel - value0) / (value1 - value0);
+    }
+
+    return p0;
+}
+
+void ExtractSurfaceFromVolume(uint3 id, uint3 groupId, uint3 groupThreadId, uint groupIndex)
+{
+    const int3 tileOffset = int3(groupThreadId + TILE_BORDER);
+    const int3 tileToVoxelOffset = int3((groupId * GROUP_SIZE) - TILE_BORDER);
+    const int3 voxel = tileToVoxelOffset + tileOffset;
+
+    uint ind;
+    //sample sdf for my tile positions
+    [unroll]
+    for (ind = groupIndex; ind < TILE_VOXEL_COUNT; ind += GROUP_THREAD_COUNT)
+    {
+        int3 sample = tileToVoxelOffset + (int3) toCoord3D(ind, (uint3) TILE_SIZE);
+        g_sdfSamples[ind] = _SdfBuffer[toIndex3DClamp(sample, _VoxelGrid)];
+    }
+
+    GroupMemoryBarrierWithGroupSync();
+
+    //make sure there's a voxel here
+    if (voxel.x < 0 || voxel.y < 0 || voxel.z < 0 || voxel.x >= (int) _VoxelGrid.x || voxel.y >= (int)_VoxelGrid.y || voxel.z >= (int)_VoxelGrid.z)
+        return;
+    
+    uint cubeClassification = classifyCube(tileOffset);
+
+    uint numTris = possibleTriangleCounts[_TriangleDataBuffer[numberOfTrianglesOffset + cubeClassification]];
+
+    for (uint t = 0; t < numTris; t++)
+    {
+        Triangle tri = newTriangle();
+        [unroll]
+        for (int i = 0; i < 3; i++) // for each vertex in triangle
+        {
+            uint edge = clamp(_TriangleDataBuffer[triangleConnectionTableOffset + cubeClassification * 16 + t * 3 + i], 0, 11); // cubedata.y == 0..255 from bitfield of 8 octants
+            int3 point0 = int3(tileOffset.x + _TriangleDataBuffer[triangleOffsetsOffset + edge * 6],
+                tileOffset.y + _TriangleDataBuffer[triangleOffsetsOffset + edge * 6 + 1],
+                tileOffset.z + _TriangleDataBuffer[triangleOffsetsOffset + edge * 6 + 2]);
+
+            int3 point1 = int3(tileOffset.x + _TriangleDataBuffer[triangleOffsetsOffset + edge * 6 + 3],
+                tileOffset.y + _TriangleDataBuffer[triangleOffsetsOffset + edge * 6 + 4],
+                tileOffset.z + _TriangleDataBuffer[triangleOffsetsOffset + edge * 6 + 5]);
+
+            float value0 = g_sdfSamples[toIndex3D(point0, (uint3) TILE_SIZE)];
+            float value1 = g_sdfSamples[toIndex3D(point1, (uint3) TILE_SIZE)];
+
+            if (value0 >= Invalid_Sdf_compare) value0 = _SdfThreshold;
+            if (value1 >= Invalid_Sdf_compare) value1 = _SdfThreshold;
+
+            float3 vertex = float3(tileToVoxelOffset) + MCLinearInterp(point0, point1, value0, value1, _SdfThreshold);
+            float3 normal = MCLinearInterp(sdfNormal(point0), sdfNormal(point1), value0, value1, _SdfThreshold);
+
+            tri.vertex[i].position = scaledPositionf(vertex);
+            tri.vertex[i].normal = clamp3(normal, float3(-1.0, -1.0, -1.0), float3(1.0, 1.0, 1.0));
+        }
+        float d1 = abs(distance(tri.vertex[1].position, tri.vertex[0].position));
+        float d2 = abs(distance(tri.vertex[2].position, tri.vertex[0].position));
+        float d3 = abs(distance(tri.vertex[1].position, tri.vertex[2].position));
+
+        if (d1 < _TriangleCullingThreshold && d2 < _TriangleCullingThreshold && d3 < _TriangleCullingThreshold)
+        {
+#ifdef DK_TEXTURE_ATLAS
+            fillAtlasUVsForTriangle(tri);
+#endif
+            _TriangleBuffer.Append(tri);
+        }
+    }
+}
+
+[numthreads(GROUP_SIZE, GROUP_SIZE, GROUP_SIZE)]
+void ExtractSurfaceFromVolume8x8x8(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    ExtractSurfaceFromVolume(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(GROUP_SIZE, GROUP_SIZE, GROUP_SIZE)]
+void ExtractSurfaceFromVolume4x4x4(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    ExtractSurfaceFromVolume(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(GROUP_SIZE, GROUP_SIZE, GROUP_SIZE)]
+void ExtractSurfaceFromVolumeWithUVs8x8x8(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    ExtractSurfaceFromVolume(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(GROUP_SIZE, GROUP_SIZE, GROUP_SIZE)]
+void ExtractSurfaceFromVolumeWithUVs4x4x4(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    ExtractSurfaceFromVolume(id, GroupId, GroupThreadId, GroupIndex);
+}

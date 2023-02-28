@@ -1,0 +1,20 @@
+{
+    "name": "Depthkit.Studio.ShaderGraph.Editor",
+    "references": [
+        "GUID:d757665d4a59fe94bab8bd5391e60e3d",
+        "GUID:3fcfa8946fa8f2b4bae0b88785a14d3e",
+        "GUID:24074500c51871f48bb3112a39fc1e55",
+        "GUID:dda20bba0e11f0c4abe396c411e7f50c"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

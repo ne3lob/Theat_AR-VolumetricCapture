@@ -1,0 +1,55 @@
+#pragma kernel GaussianBlurFilter1 TILE_BORDER=1
+#pragma kernel GaussianBlurFilter2 TILE_BORDER=2
+#pragma kernel GaussianBlurFilter4 TILE_BORDER=4
+#pragma kernel GaussianBlurFilter8 TILE_BORDER=8
+#pragma kernel GaussianBlurFilter16 TILE_BORDER=16
+#pragma kernel GaussianBlurFilter32 TILE_BORDER=32
+
+
+static const uint BLOCK_SIZE = 8; 
+
+Texture2DArray<float> _PingData;
+RWTexture2DArray<float> _PongData;
+int _Slice;
+
+#define DK_GAUSSIAN_FILTER_SAMPLE_UV(uv) float3(uv.xy, (float)_Slice)
+
+#define DK_GAUSSIAN_FILTER_OUTPUT_COORD(pixel) int3(pixel.xy, _Slice)
+
+#include "Packages/nyc.scatter.depthkit.core/Runtime/Resources/Shaders/Util/GaussianBlurFilter.cginc"
+
+[numthreads(BLOCK_WIDTH, 1, 1)]
+void GaussianBlurFilter1(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    GaussianBlurFilter(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(BLOCK_WIDTH, 1, 1)]
+void GaussianBlurFilter2(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    GaussianBlurFilter(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(BLOCK_WIDTH, 1, 1)]
+void GaussianBlurFilter4(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    GaussianBlurFilter(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(BLOCK_WIDTH, 1, 1)]
+void GaussianBlurFilter8(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    GaussianBlurFilter(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(BLOCK_WIDTH, 1, 1)]
+void GaussianBlurFilter16(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    GaussianBlurFilter(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(BLOCK_WIDTH, 1, 1)]
+void GaussianBlurFilter32(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    GaussianBlurFilter(id, GroupId, GroupThreadId, GroupIndex);
+}

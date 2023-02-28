@@ -1,0 +1,168 @@
+﻿/************************************************************************************
+
+Depthkit Unity SDK License v1
+Copyright 2016-2020 Scatter All Rights reserved.  
+
+Licensed under the Scatter Software Development Kit License Agreement (the "License"); 
+you may not use this SDK except in compliance with the License, 
+which is provided at the time of installation or download, 
+or which otherwise accompanies this software in either electronic or hard copy form.  
+
+You may obtain a copy of the License at http://www.depthkit.tv/license-agreement-v1
+
+Unless required by applicable law or agreed to in writing, 
+the SDK distributed under the License is distributed on an "AS IS" BASIS, 
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+See the License for the specific language governing permissions and limitations under the License. 
+
+************************************************************************************/
+
+#pragma kernel GeneratePerPixelNormalWeights16x16 BLOCK_SIZE=16 
+#pragma kernel GeneratePerPixelNormalWeights8x8 BLOCK_SIZE=8
+#pragma kernel GeneratePerPixelNormalWeights4x4 BLOCK_SIZE=4
+#pragma kernel GeneratePerPixelNormalWeightsAndWsDepth16x16 BLOCK_SIZE=16 WRITE_WS_DEPTH=1
+#pragma kernel GeneratePerPixelNormalWeightsAndWsDepth8x8 BLOCK_SIZE=8 WRITE_WS_DEPTH=1
+#pragma kernel GeneratePerPixelNormalWeightsAndWsDepth4x4 BLOCK_SIZE=4 WRITE_WS_DEPTH=1
+
+#include "Packages/nyc.scatter.depthkit.core/Runtime/Resources/Shaders/Includes/Depthkit.cginc"
+
+#ifdef WRITE_WS_DEPTH
+RWTexture2D<float> _WSDepth;
+#endif
+
+RWTexture2D<float> _NormalWeights;
+float4 _NormalTexture_TexelSize;
+
+static const uint BLOCK_THREAD_COUNT = BLOCK_SIZE * BLOCK_SIZE;
+static const uint TILE_BORDER = 1;
+static const uint TILE_SIZE = BLOCK_SIZE + TILE_BORDER * 2;
+static const uint TILE_PIXEL_COUNT = TILE_SIZE * TILE_SIZE; 
+
+static const uint KERNEL_WIDTH = 1;
+
+groupshared float3 g_samples[TILE_PIXEL_COUNT];
+
+// ------------
+//| 7 | 2 | 5 |
+//| 1 | 0 | 3 |
+//| 6 | 4 | 8 |
+// ------------
+
+static const int2 offsets[9] = {
+    {0,0}, //0
+    {-1,0}, //1
+    {0,-1}, //2
+    {1,0}, //3
+    {0,1}, //4
+    {1,-1}, //5
+    {-1, 1}, //6
+    {-1, -1}, //7
+    {1, 1} //8
+};
+
+float length2(float3 vec)
+{
+    return (vec.x * vec.x
+           + vec.y * vec.y
+           + vec.z * vec.z);
+}
+
+void GeneratePerPixelNormalWeights(uint3 id, uint3 GroupId, uint3 GroupThreadId, uint GroupIndex)
+{
+    uint ind;
+
+    //////////////////////////////////////
+    //Fill a tile's worth of shared memory
+    //////////////////////////////////////
+
+    const int2 tileUpperLeft = int2(GroupId.xy * BLOCK_SIZE) - (int2)TILE_BORDER;
+    [unroll]
+    for (ind = GroupIndex; ind < TILE_PIXEL_COUNT; ind += BLOCK_THREAD_COUNT)
+    {
+        int2 pixel = tileUpperLeft + (int2)toCoord(ind, TILE_SIZE);
+        pixel = clamp(pixel, int2(0,0), int2(_NormalTexture_TexelSize.zw)); // clamp to edges of cpptex
+        float2 uv = pixel * _NormalTexture_TexelSize.xy;
+        float2 colorUV, depthUV;
+        dkGetColorAndDepthUV(uv, colorUV, depthUV);
+        float2 perspectiveUV = dkGetPerspectiveCoordFromPackedUV(uv);
+        uint perspectiveIndex = dkGetPerspectiveIndexFromCoord(perspectiveUV);
+        
+        //TODO when doing reduced resolution, we want bilinear interp? i think no
+        float depth = dkLoadDepth(depthUV, perspectiveIndex, perspectiveUV);
+        
+        g_samples[ind] = dkPackedUVToLocal(uv, depth).xyz;
+    }
+
+    GroupMemoryBarrierWithGroupSync(); //wait for everyone
+
+    ///////////////////////////////////////////////////////////////////////////////////
+    //exit here if we are out of bounds of the texture, have to do it after the barrier
+    ///////////////////////////////////////////////////////////////////////////////////
+
+    if((int)id.x >= (int)_NormalTexture_TexelSize.z || (int)id.y >= (int)_NormalTexture_TexelSize.w)
+    {
+        return;
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////
+    //Dervie the tile sample ids from the group thread id and fetch the shared sample
+    /////////////////////////////////////////////////////////////////////////////////
+
+    int2 tileOffset = GroupThreadId.xy + TILE_BORDER;
+    
+    uint id0 = toIndex(tileOffset + offsets[0], TILE_SIZE);
+    uint id1 = toIndex(tileOffset + offsets[1], TILE_SIZE);
+    uint id2 = toIndex(tileOffset + offsets[2], TILE_SIZE);
+    uint id3 = toIndex(tileOffset + offsets[3], TILE_SIZE);
+    uint id4 = toIndex(tileOffset + offsets[4], TILE_SIZE);
+
+    float3 normal = normalize(
+            cross(g_samples[id1] - g_samples[id0], g_samples[id2] - g_samples[id0]) +
+            cross(g_samples[id3] - g_samples[id0], g_samples[id4] - g_samples[id0]));
+
+    //////////////////////////////////////////////
+    //Write to the texture at disaptch id location
+    //////////////////////////////////////////////
+    float normalWeight = abs(dot(normal, float3(0.0, 0.0, 1.0)));
+    _NormalWeights[id.xy] = normalWeight;
+
+#ifdef WRITE_WS_DEPTH
+    _WSDepth[id.xy] = g_samples[id0].z;
+#endif
+}
+
+[numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
+void GeneratePerPixelNormalWeights16x16(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    GeneratePerPixelNormalWeights(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
+void GeneratePerPixelNormalWeights8x8(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    GeneratePerPixelNormalWeights(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
+void GeneratePerPixelNormalWeights4x4(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    GeneratePerPixelNormalWeights(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
+void GeneratePerPixelNormalWeightsAndWsDepth16x16(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    GeneratePerPixelNormalWeights(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
+void GeneratePerPixelNormalWeightsAndWsDepth8x8(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    GeneratePerPixelNormalWeights(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
+void GeneratePerPixelNormalWeightsAndWsDepth4x4(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    GeneratePerPixelNormalWeights(id, GroupId, GroupThreadId, GroupIndex);
+}

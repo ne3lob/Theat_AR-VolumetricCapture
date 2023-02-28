@@ -1,0 +1,36 @@
+
+//vertices
+#pragma kernel KGenerateVertices_Horizontal TILE_BORDER=3
+#pragma kernel KGenerateVertices_HorizontalWEdgeMask DK_CORE_USE_EDGEMASK TILE_BORDER=3
+#pragma kernel KGenerateVertices_Vertical TILE_BORDER=3
+#pragma kernel KGenerateVertices_VerticalWEdgeMask DK_CORE_USE_EDGEMASK TILE_BORDER=3
+
+//normals
+#pragma kernel KGenerateNormals DK_CORE_SMOOTH_NORMALS TILE_BORDER=1
+#pragma kernel KGenerateNormalsAdjustable DK_CORE_ADJUSTABLE_NORMALS TILE_BORDER=1
+#pragma kernel KGenerateNormalsAdjustableSmoother DK_CORE_ADJUSTABLE_NORMALS DK_CORE_ADJUSTABLE_NORMALS_SMOOTHER TILE_BORDER=1
+#pragma kernel KGenerateNormalsNone DK_CORE_NO_NORMALS TILE_BORDER=0
+#pragma kernel KGenerateNormalsDepthCamera DK_CORE_DEPTHCAMERA_NORMALS TILE_BORDER=0
+
+//triangles
+#pragma kernel KGenerateTriangles DK_VERTEX_BUFFER_READONLY TILE_BORDER=1
+#pragma kernel KGenerateTrianglesWEdgeMask DK_CORE_USE_EDGEMASK DK_VERTEX_BUFFER_READONLY TILE_BORDER=1
+
+#include "Packages/nyc.scatter.depthkit.core/Runtime/Resources/Shaders/Includes/CoreVertex.cginc"
+#include "Packages/nyc.scatter.depthkit.core/Runtime/Resources/Shaders/Includes/CoreTriangle.cginc"
+#include "Packages/nyc.scatter.depthkit.core/Runtime/Resources/Shaders/DataSource/DepthkitCoreMeshSourceCommon.cginc"
+#include "Packages/nyc.scatter.depthkit.core/Runtime/Resources/Shaders/DataSource/GenerateVertices.cginc"
+#include "Packages/nyc.scatter.depthkit.core/Runtime/Resources/Shaders/DataSource/GenerateNormals.cginc"
+#include "Packages/nyc.scatter.depthkit.core/Runtime/Resources/Shaders/DataSource/GenerateTriangles.cginc"
+
+[numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
+void KGenerateTriangles(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    GenerateTriangles(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
+void KGenerateTrianglesWEdgeMask(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    GenerateTriangles(id, GroupId, GroupThreadId, GroupIndex);
+}

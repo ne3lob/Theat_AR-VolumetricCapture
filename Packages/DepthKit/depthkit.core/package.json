@@ -1,0 +1,29 @@
+{
+  "name": "nyc.scatter.depthkit.core",
+  "version": "0.12.2",
+  "displayName": "Depthkit Core",
+  "description": "Use the Depthkit Core Package to render Depthkit captures from Depthkit Core and Depthkit Cinema in Unity’s Built-in Render Pipeline.\n\nNote that you can only render single-perspective captures with the Depthkit Core package suite. For multi-perspective captures, use Depthkit Studio package suite.",
+  "unity": "2020.3",
+  "samples": [
+    {
+      "displayName": "AV Pro 1.x Video Player",
+      "description": "Integration for Renderhead's AV Pro v1.x Video Player. (Must Have AVProVideo 1.x imported!).  This version of AVPro is deprecated. To use this script, you must add DK_AVPROv1 as a macro define in player settings.",
+      "path": "Samples~/AVProVideoPlayer"
+    },
+    {
+      "displayName": "Prefabs - Depthkit Core Built-in",
+      "description": "Prefabs for the Built-in Render Pipeline",
+      "path": "Samples~/Depthkit Core Built-in Prefabs"
+    }
+  ],
+  "keywords": [
+    "Depthkit",
+    "Volumetric",
+    "Scatter"
+  ],
+  "author": {
+    "name": "Scatter",
+    "email": "support@depthkit.tv",
+    "url": "https://www.depthkit.tv"
+  }
+}

@@ -143,6 +143,40 @@
       },
       "url": "https://packages.unity.com"
     },
+    "nyc.scatter.depthkit.core": {
+      "version": "file:DepthKit/depthkit.core",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {}
+    },
+    "nyc.scatter.depthkit.core.shadergraph": {
+      "version": "file:DepthKit/depthkit.core.shadergraph",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {
+        "nyc.scatter.depthkit.core": "0.12.0",
+        "com.unity.shadergraph": "10.8.1"
+      }
+    },
+    "nyc.scatter.depthkit.studio": {
+      "version": "file:DepthKit/depthkit.studio",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {
+        "nyc.scatter.depthkit.core": "0.12.2"
+      }
+    },
+    "nyc.scatter.depthkit.studio.shadergraph": {
+      "version": "file:DepthKit/depthkit.studio.shadergraph",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {
+        "nyc.scatter.depthkit.core": "0.12.0",
+        "nyc.scatter.depthkit.studio": "0.8.3",
+        "nyc.scatter.depthkit.core.shadergraph": "0.5.1",
+        "com.unity.shadergraph": "10.8.1"
+      }
+    },
     "com.unity.modules.ai": {
       "version": "1.0.0",
       "depth": 0,

@@ -1,0 +1,53 @@
+/************************************************************************************
+
+Depthkit Unity SDK License v1
+Copyright 2016-2020 Scatter All Rights reserved.
+
+Licensed under the Scatter Software Development Kit License Agreement (the "License");
+you may not use this SDK except in compliance with the License,
+which is provided at the time of installation or download,
+or which otherwise accompanies this software in either electronic or hard copy form.
+
+You may obtain a copy of the License at http://www.depthkit.tv/license-agreement-v1
+
+Unless required by applicable law or agreed to in writing,
+the SDK distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and limitations under the License.
+
+************************************************************************************/
+
+#pragma kernel KSobelFilter16x16 BLOCK_SIZE=16
+#pragma kernel KSobelFilter8x8 BLOCK_SIZE=8
+#pragma kernel KSobelFilter4x4 BLOCK_SIZE=4
+
+#include "Packages/nyc.scatter.depthkit.core/Runtime/Resources/Shaders/Includes/Defines.cginc"
+
+RWTexture2DArray<float> _MaskTexture;
+int _SliceCount;
+float4 _SliceToPerspective[DK_MAX_NUM_PERSPECTIVES];
+
+#define DK_SOBEL_FILTER_UV(uv) dkPerspectiveToPackedUV((uint) _SliceToPerspective[clamp(id.z, 0, _SliceCount - 1)].x, uv);
+
+#define DK_SOBEL_FILTER_OUTPUT_COORD(pixel) pixel.xyz
+
+
+#include "Packages/nyc.scatter.depthkit.core/Runtime/Resources/Shaders/Util/SobelFilter.cginc"
+
+[numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
+void KSobelFilter16x16(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    SobelFilter(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
+void KSobelFilter8x8(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    SobelFilter(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
+void KSobelFilter4x4(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    SobelFilter(id, GroupId, GroupThreadId, GroupIndex);
+}

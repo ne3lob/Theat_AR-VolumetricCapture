@@ -1,0 +1,28 @@
+{
+  "name": "nyc.scatter.depthkit.core.shadergraph",
+  "version": "0.5.1",
+  "displayName": "Depthkit Core Shader Graph",
+  "description": "Use the Depthkit Core Shader Graph Package to render Depthkit captures from Depthkit Core and Depthkit Cinema in Unity’s Scriptable Render Pipeline including High Definition RP and Universal RP. This includes the components to visualize and customize Depthkit captures using Unity’s Shader Graph system.\n\nNote you can only render single-perspective captures with the Depthkit Core packages. For multi-perspective captures, use Depthkit Studio package suite.",
+  "unity": "2020.3",
+  "dependencies": {
+    "nyc.scatter.depthkit.core": "0.12.0",
+    "com.unity.shadergraph": "10.8.1"
+  },
+  "samples": [
+    {
+      "displayName": "Prefabs - Depthkit Core Shader Graph",
+      "description": "Prefabs for the Scriptable Render Pipelines",
+      "path": "Samples~/Depthkit Core Shader Graph Prefabs"
+    }
+  ],
+  "keywords": [
+    "Depthkit",
+    "Volumetric",
+    "Scatter"
+  ],
+  "author": {
+    "name": "Scatter",
+    "email": "support@depthkit.tv",
+    "url": "https://www.depthkit.tv"
+  }
+}

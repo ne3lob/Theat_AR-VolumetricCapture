@@ -1,0 +1,52 @@
+#pragma kernel KPrepareDrawIndirectArgs
+#pragma kernel KPrepareDispatchIndirectArgs
+#pragma kernel KPrepareAllIndirectArgs
+
+StructuredBuffer<uint> _TrianglesCount; //[count]
+
+bool _SinglePassStereo = false;
+RWStructuredBuffer<uint> _TrianglesDrawIndirectArgs; //[vertex count, instance count, vertex offset, instance offset]
+
+uint _GroupSize;
+uint _DispatchY = 1;
+uint _DispatchZ = 1;
+RWStructuredBuffer<uint> _TrianglesDispatchIndirectArgs; //[dispatch groups x, dispatch groups y, dispatch groups z]
+
+void prepareDrawIndirectArgs(uint count)
+{
+    _TrianglesDrawIndirectArgs[0] = count * 3; // triangle count * 3 verts
+    _TrianglesDrawIndirectArgs[1] = lerp(1, 2, _SinglePassStereo);
+    _TrianglesDrawIndirectArgs[2] = 0;
+    _TrianglesDrawIndirectArgs[3] = 0;
+}
+
+void prepareDispatchIndirectArgs(uint count)
+{
+    _TrianglesDispatchIndirectArgs[0] = count / _GroupSize; // triangle count / group size to dispatch indirect
+    _TrianglesDispatchIndirectArgs[1] = _DispatchY;
+    _TrianglesDispatchIndirectArgs[2] = _DispatchZ;
+}
+
+/////KERNELS
+
+[numthreads(1, 1, 1)]
+void KPrepareDrawIndirectArgs(uint3 id : SV_DispatchThreadID)
+{
+    uint count = _TrianglesCount[0];
+    prepareDrawIndirectArgs(count);
+}
+
+[numthreads(1, 1, 1)]
+void KPrepareDispatchIndirectArgs(uint3 id : SV_DispatchThreadID)
+{
+    uint count = _TrianglesCount[0];
+    prepareDispatchIndirectArgs(count);
+}
+
+[numthreads(1, 1, 1)]
+void KPrepareAllIndirectArgs(uint3 id : SV_DispatchThreadID)
+{
+    uint count = _TrianglesCount[0];
+    prepareDrawIndirectArgs(count);
+    prepareDispatchIndirectArgs(count);
+}

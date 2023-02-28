@@ -1,0 +1,41 @@
+﻿#pragma kernel MinMaxDownscaleByHalf4x4 BLOCK_SIZE=4
+#pragma kernel MinMaxDownscaleByHalf8x8 BLOCK_SIZE=8
+#pragma kernel MinMaxDownscaleByHalf16x16 BLOCK_SIZE=16
+
+Texture2DArray<float2> _FullRes;
+RWTexture2DArray<float4> _Downscaled;
+
+#include "Packages/nyc.scatter.depthkit.core/Runtime/Resources/Shaders/Includes/Depthkit.cginc"
+
+void MinMaxDownscaleByHalf(uint3 id, uint3 GroupId, uint3 GroupThreadId, uint GroupIndex)
+{
+    float2 sample0 = _FullRes.Load(int4(id.xy * 2 + int2(0, 0), id.z, 0));
+    float2 sample1 = _FullRes.Load(int4(id.xy * 2 + int2(1, 0), id.z, 0));
+    float2 sample2 = _FullRes.Load(int4(id.xy * 2 + int2(0, 1), id.z, 0));
+    float2 sample3 = _FullRes.Load(int4(id.xy * 2 + int2(1, 1), id.z, 0));
+
+    float minSampleX = min(min(sample0.x, sample1.x), min(sample2.x, sample3.x));
+    float maxSampleX = max(max(sample0.x, sample1.x), max(sample2.x, sample3.x));
+    _Downscaled[id.xyz] = float4(
+        minSampleX,
+        max(max(max(sample0.y, sample1.y), max(sample2.y, sample3.y)), maxSampleX), 0.0f, 1.0f
+    );
+}
+
+[numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
+void MinMaxDownscaleByHalf4x4(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    MinMaxDownscaleByHalf(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
+void MinMaxDownscaleByHalf8x8(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    MinMaxDownscaleByHalf(id, GroupId, GroupThreadId, GroupIndex);
+}
+
+[numthreads(BLOCK_SIZE, BLOCK_SIZE, 1)]
+void MinMaxDownscaleByHalf16x16(uint3 id : SV_DispatchThreadID, uint3 GroupId : SV_GroupID, uint3 GroupThreadId : SV_GroupThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    MinMaxDownscaleByHalf(id, GroupId, GroupThreadId, GroupIndex);
+}

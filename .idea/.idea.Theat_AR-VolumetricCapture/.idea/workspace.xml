@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="d319fd46-1b67-47bb-b4b0-e8a65dd415f2" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/Assets/3D.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/3D/prefab.prefab" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/3D/prefab.prefab.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Amelie.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Amelie/TAKE_Amelie02_08_12_45_51_Export_02_24_20_42_49.mp4" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Amelie/TAKE_Amelie02_08_12_45_51_Export_02_24_20_42_49.mp4.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Amelie/TAKE_Amelie02_08_12_45_51_Export_02_24_20_42_49.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Amelie/TAKE_Amelie02_08_12_45_51_Export_02_24_20_42_49.png.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Amelie/TAKE_Amelie02_08_12_45_51_Export_02_24_20_42_49.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Amelie/TAKE_Amelie02_08_12_45_51_Export_02_24_20_42_49.txt.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Freddy.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Freddy/TAKE_FreddyFour02_08_13_08_11_Export_02_20_20_54_26.mp4" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Freddy/TAKE_FreddyFour02_08_13_08_11_Export_02_20_20_54_26.mp4.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Freddy/TAKE_FreddyFour02_08_13_08_11_Export_02_20_20_54_26.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Freddy/TAKE_FreddyFour02_08_13_08_11_Export_02_20_20_54_26.png.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Freddy/TAKE_FreddyFour02_08_13_08_11_Export_02_20_20_54_26.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Freddy/TAKE_FreddyFour02_08_13_08_11_Export_02_20_20_54_26.txt.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Regina.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Regina/TAKE_Regina_Second02_08_13_16_25_Export_02_20_16_53_14.mp4" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Regina/TAKE_Regina_Second02_08_13_16_25_Export_02_20_16_53_14.mp4.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Regina/TAKE_Regina_Second02_08_13_16_25_Export_02_20_16_53_14.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Regina/TAKE_Regina_Second02_08_13_16_25_Export_02_20_16_53_14.png.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Regina/TAKE_Regina_Second02_08_13_16_25_Export_02_20_16_53_14.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Regina/TAKE_Regina_Second02_08_13_16_25_Export_02_20_16_53_14.txt.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Rene.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Rene/TAKE_RENE_Second02_08_12_34_10_Export_02_20_22_00_32.mp4" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Rene/TAKE_RENE_Second02_08_12_34_10_Export_02_20_22_00_32.mp4.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Rene/TAKE_RENE_Second02_08_12_34_10_Export_02_20_22_00_32.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Rene/TAKE_RENE_Second02_08_12_34_10_Export_02_20_22_00_32.png.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Rene/TAKE_RENE_Second02_08_12_34_10_Export_02_20_22_00_32.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Clips/Rene/TAKE_RENE_Second02_08_12_34_10_Export_02_20_22_00_32.txt.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned/Einhorn_Chor_Cleaned_AMELIE.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned/Einhorn_Chor_Cleaned_AMELIE.wav.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned/Einhorn_Chor_Cleaned_AMELIE_ENDE.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned/Einhorn_Chor_Cleaned_AMELIE_ENDE.wav.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned/Einhorn_Chor_Cleaned_FREDDY.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned/Einhorn_Chor_Cleaned_FREDDY.wav.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned/Einhorn_Chor_Cleaned_FREDDY_ENDE.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned/Einhorn_Chor_Cleaned_FREDDY_ENDE.wav.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned/Einhorn_Chor_Cleaned_REGINE.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned/Einhorn_Chor_Cleaned_REGINE.wav.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned/Einhorn_Chor_Cleaned_REGINE_ENDE.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned/Einhorn_Chor_Cleaned_REGINE_ENDE.wav.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned/Einhorn_Chor_Cleaned_RENE.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned/Einhorn_Chor_Cleaned_RENE.wav.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned/Einhorn_Chor_Cleaned_RENE_ENDE.wav" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Einhorn_Chor_Cleaned/Einhorn_Chor_Cleaned_RENE_ENDE.wav.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Scenes/SampleScene.unity" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Scenes/SampleScene.unity.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Packages/manifest.json" beforeDir="false" afterPath="$PROJECT_DIR$/Packages/manifest.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Packages/packages-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/Packages/packages-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ProjectSettings/EditorBuildSettings.asset" beforeDir="false" afterPath="$PROJECT_DIR$/ProjectSettings/EditorBuildSettings.asset" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/Assets/RotationScript.cs" root0="FORCE_HIGHLIGHTING" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2MNmB0hdDjDq1fF9BZBCGifFPNg" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Discover.Launch.Via.Unity": "true",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RunManager" selected="Attach to Unity Editor.Attach to Unity Editor">
+    <configuration name="UnitTests (batch mode)" type="RunUnityExe" factoryName="Unity Executable">
+      <option name="EXE_PATH" value="C:\Program Files\Unity\Hub\Editor\2021.3.19f1\Editor\Unity.exe" />
+      <option name="PROGRAM_PARAMETERS" value="-runTests -batchmode -projectPath &quot;C:\Users\chris\OneDrive\Dokumente\Unity Projects\Theat_AR-VolumetricCapture&quot; -testResults Logs/results.xml -testPlatform EditMode -debugCodeOptimization" />
+      <option name="WORKING_DIRECTORY" value="C:\Users\chris\OneDrive\Dokumente\Unity Projects\Theat_AR-VolumetricCapture" />
+      <option name="PASS_PARENT_ENVS" value="1" />
+      <option name="USE_EXTERNAL_CONSOLE" value="0" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Attach to Unity Editor &amp; Play" type="UNITY_DEBUG_RUN_CONFIGURATION" factoryName="UNITY_ATTACH_AND_PLAY" show_console_on_std_err="false" show_console_on_std_out="false" port="50000" address="localhost">
+      <option name="allowRunningInParallel" value="false" />
+      <option name="listenPortForConnections" value="false" />
+      <option name="pid" />
+      <option name="projectPathOnTarget" />
+      <option name="selectedOptions">
+        <list />
+      </option>
+      <method v="2" />
+    </configuration>
+    <configuration name="Attach to Unity Editor" type="UNITY_DEBUG_RUN_CONFIGURATION" factoryName="Unity Debug" show_console_on_std_err="false" show_console_on_std_out="false" port="50000" address="localhost">
+      <option name="allowRunningInParallel" value="false" />
+      <option name="listenPortForConnections" value="false" />
+      <option name="pid" />
+      <option name="projectPathOnTarget" />
+      <option name="selectedOptions">
+        <list />
+      </option>
+      <method v="2" />
+    </configuration>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="d319fd46-1b67-47bb-b4b0-e8a65dd415f2" name="Changes" comment="" />
+      <created>1677616278027</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1677616278027</updated>
+      <workItem from="1677616287634" duration="1278000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="UnityCheckinConfiguration" checkUnsavedScenes="true" />
+  <component name="UnityProjectConfiguration" hasMinimizedUI="true" />
+  <component name="UnityUnitTestConfiguration" currentTestLauncher="EditMode" />
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />
+  </component>
+</project>

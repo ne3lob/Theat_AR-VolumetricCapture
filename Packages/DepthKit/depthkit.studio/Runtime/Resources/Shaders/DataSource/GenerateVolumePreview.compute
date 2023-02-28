@@ -1,0 +1,53 @@
+/************************************************************************************
+
+Depthkit Unity SDK License v1
+Copyright 2016-2020 Scatter All Rights reserved.  
+
+Licensed under the Scatter Software Development Kit License Agreement (the "License"); 
+you may not use this SDK except in compliance with the License, 
+which is provided at the time of installation or download, 
+or which otherwise accompanies this software in either electronic or hard copy form.  
+
+You may obtain a copy of the License at http://www.depthkit.tv/license-agreement-v1
+
+Unless required by applicable law or agreed to in writing, 
+the SDK distributed under the License is distributed on an "AS IS" BASIS, 
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+See the License for the specific language governing permissions and limitations under the License. 
+
+************************************************************************************/
+
+#pragma kernel GenerateVolumePreview SDF_READ_ONLY
+
+#include "Packages/nyc.scatter.depthkit.studio/Runtime/Resources/Shaders/DataSource/StudioMeshSourceCommon.cginc"
+#include "Packages/nyc.scatter.depthkit.core/Runtime/Resources/Shaders/Includes/Utils.cginc"
+
+struct Vert
+{
+    float3 position;
+    float4 color;
+};
+
+RWStructuredBuffer<Vert> _Points;
+
+float4x4 _LocalToWorldMatrix;
+
+[numthreads(8, 8, 8)]
+void GenerateVolumePreview(uint3 id : SV_DispatchThreadID)
+{
+    int sdfIndex = linearIndex(id);
+    float sdfVal = _SdfBuffer[sdfIndex];
+    if (sdfVal > Invalid_Sdf_compare)
+    {
+        _Points[sdfIndex].position = 0;
+        _Points[sdfIndex].color = 0;
+    }
+    else
+    {
+        float val = saturate(remap(sdfVal, -_SdfSensitivity, _SdfSensitivity, 0.0f, 1.0f));
+        val = abs(val - 0.5f) * 2.0f; //if val is 0 it is on the surface
+        float3 pos3d = scaledPosition(id);
+        _Points[sdfIndex].position = mul(_LocalToWorldMatrix, float4(pos3d, 1)).xyz;
+        _Points[sdfIndex].color = float4(hsv2rgb(float3(val, 1, 1)), 1.0 - val); //red + fully opaque is closest to the surface
+    }
+}

@@ -1,0 +1,365 @@
+/************************************************************************************
+
+Depthkit Unity SDK License v1
+Copyright 2016-2020 Scatter All Rights reserved.  
+
+Licensed under the Scatter Software Development Kit License Agreement (the "License"); 
+you may not use this SDK except in compliance with the License, 
+which is provided at the time of installation or download, 
+or which otherwise accompanies this software in either electronic or hard copy form.  
+
+You may obtain a copy of the License at http://www.depthkit.tv/license-agreement-v1
+
+Unless required by applicable law or agreed to in writing, 
+the SDK distributed under the License is distributed on an "AS IS" BASIS, 
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+See the License for the specific language governing permissions and limitations under the License. 
+
+************************************************************************************/
+
+#pragma kernel GenerateVolumeSinglePass GROUP_SIZE=8
+
+//multipass
+#pragma kernel KGenerateVolumeMultiPassInit GROUP_SIZE=8
+#pragma kernel KGenerateVolumeMultiPassAccumulate GROUP_SIZE=8
+#pragma kernel KGenerateVolumeMultiPassResolve DK_SEPARATE_WEIGHT_READONLY GROUP_SIZE=8
+
+#define VOX_INVALID 0
+#define VOX_UNKNOWN 1       // or really inside when carved
+#define VOX_UNSEEN 2
+#define VOX_IN_FRONT 3
+
+static const float epsilon = 1e-10;
+static const float PI = 3.14159265f;
+
+#include "Packages/nyc.scatter.depthkit.core/Runtime/Resources/Shaders/Includes/Depthkit.cginc"
+#include "Packages/nyc.scatter.depthkit.studio/Runtime/Resources/Shaders/DataSource/StudioMeshSourceCommon.cginc"
+
+Texture2D<float> _NormalTexture;
+float4 _NormalTexture_TexelSize;
+
+struct PerspectiveGeometry
+{
+    int enabled;
+    int overrideWeightUnknown;
+    float weightUnknown;
+    float viewDependentUnseenAmount;
+    float viewDependentInFrontAmount;
+    float viewDependentWeight;
+    float pad1;
+    float pad2;
+};
+
+StructuredBuffer<PerspectiveGeometry> _PerspectiveGeometryData;
+
+float _WeightUnknown = 0.0025f;
+float _WeightUnseenMax = 1.0f;
+float _WeightUnseenMin = 0.001f;
+float _WeightUnseenFalloffPower = 10.0f;
+float _WeightInFrontMax = 1.0f;
+float _WeightInFrontMin = 0.1f;
+
+///////////////////////////////////
+
+void CalculateSDF(in float3 voxelCenter, in float3 position, in float depth, in uint perspectiveIndex, inout float sdf, inout int flag)
+{
+    float3 viewspacePos3d = dkWorldSpaceToDepthCameraObjectSpace(perspectiveIndex, voxelCenter);
+    // sdf is the direction and distance from the dk surface, 
+    // sign is tested in depth camera view space, distance is in unity object space.
+    sdf = sign(viewspacePos3d.z - dkNormalizedDepthToMeters(perspectiveIndex, depth)) * distance(position, voxelCenter);
+
+    flag = sdf > 0.0 ? VOX_UNSEEN : VOX_IN_FRONT;
+}
+
+bool CalculateSDFWeight(in uint perspectiveIndex, in float3 voxelCenter, in float sdf, in int flag, in PerspectiveGeometry geom, in float normalWeight, inout float weight)
+{
+    // Attenuate the weight by the squared distance to the camera.
+        // Closer cameras will affect the surface more than distant cameras
+    float3 camPosition = dkGetDepthCameraPosition(perspectiveIndex);
+    float camDistSquared = distanceSquared(voxelCenter, camPosition);
+    
+    float viewWeight = geom.viewDependentWeight;
+        
+    // flag values are either VOX_UNSEEN or VOX_IN_FRONT
+    if (flag == VOX_UNSEEN)
+    {
+        // Cutoff at _SdfSensitivity
+        if (sdf > _SdfSensitivity)
+        {
+            return false;
+        }
+        // Interpolate weight based on distance from surface up to _SdfSensitivity
+        weight = max(pow(abs(remap(sdf, 0, _SdfSensitivity, _WeightUnseenMax, 0.0f)), _WeightUnseenFalloffPower), _WeightUnseenMin);
+
+        // Distance to camera based weighting
+        weight = max(weight / (camDistSquared + 1.0f), _WeightUnseenMin) * normalWeight * lerp(1.0f, viewWeight, geom.viewDependentUnseenAmount);
+    }
+    else if (flag == VOX_IN_FRONT)
+    {
+        if (sdf < -_SdfSensitivity)
+        {
+            return false;
+        }
+        // Distance to camera based weighting
+        weight = max(_WeightInFrontMax / (camDistSquared + 1.0f), _WeightInFrontMin) * normalWeight * lerp(1.0f, viewWeight, geom.viewDependentInFrontAmount);
+    }
+    return true;
+}
+
+bool GetSDFContribution(in uint perspectiveIndex, in float3 pos3d, inout int flag, out float sdf, out float normalWeight)
+{
+    sdf = 0.0f; //0 is on the surface
+    normalWeight = 0.0;
+    bool result = true;
+
+    float2 perspectiveUV, colorUV, depthUV;
+    float3 viewSpacePos3d;
+    dkWorldToPerspectiveUV(perspectiveIndex, pos3d, perspectiveUV, depthUV, colorUV, viewSpacePos3d);
+
+    if (perspectiveUV.x <= 0.f || perspectiveUV.y <= 0.f || perspectiveUV.x >= 1.0f || perspectiveUV.y >= 1.0f)
+    {
+        // Flag voxel as invalid and return false.
+        flag = VOX_INVALID;
+        result = false; //early out if the voxel is out of bounds of the perspective
+    }
+    else
+    {
+        float depth = dkLoadDepth(depthUV, perspectiveIndex, perspectiveUV);
+
+        float2 packedUV = dkPerspectiveToPackedUV(perspectiveIndex, perspectiveUV);
+        packedUV = saturate(packedUV);
+        normalWeight = _NormalTexture[uint2(packedUV * _NormalTexture_TexelSize.zw)];
+
+        if (!dkValidateNormalizedDepth(perspectiveIndex, depth))
+        {
+            // invalid depth returned here, flag voxel and return false
+            flag = VOX_UNKNOWN;
+            result = false; //early out if no valid depth here
+        }
+        else
+        {
+            float3 unprojected = dkPerspectiveUVToWorld(perspectiveIndex, perspectiveUV, depth).xyz;
+            CalculateSDF(pos3d, unprojected, depth, perspectiveIndex, sdf, flag);
+        }
+    }
+
+    return result;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void  GetSDFCamContribution(in uint perspectiveIndex, in float3 pos3d, inout float accumulatedWeight, inout float accumulatedSDF)
+{
+    int flag = VOX_UNKNOWN;
+    float sdf; 
+    float newWeight = 0.0;
+    float normalWeight = 0.0f;
+    
+    PerspectiveGeometry data = _PerspectiveGeometryData[perspectiveIndex];
+    
+    if (data.enabled == 0)
+        return; //this perspective is disabled
+
+    if (GetSDFContribution(perspectiveIndex, pos3d, flag, sdf, normalWeight))
+    {
+        if (!CalculateSDFWeight(perspectiveIndex, pos3d, sdf, flag, data, normalWeight, newWeight))
+            return;
+    }
+    else
+    {
+        // GetSDFContribution return false and the flag values are either VOX_UNKNOWN or VOX_INVALID
+        // weight unknown voxels are updated to lie at the _sdfSensitivity on the inside of the surface
+        float weightUnknown = lerp(_WeightUnknown, data.weightUnknown, data.overrideWeightUnknown);
+        // weight unknown values larger than epsilon are used to keep the surface from getting noisy
+        if (flag == VOX_UNKNOWN && weightUnknown >= epsilon)
+        {
+            sdf = -_SdfSensitivity;
+            newWeight = weightUnknown;
+        }
+        else
+        {
+            // for voxels flagged invalid or unknown voxels with very low weight known values, the sdf and weight is not updated. 
+            // This is so the accumulatedSDF remains at the InvalidSDF value so they can be filtered out
+            // return without updating the accumulatedSDF and accumulatedWeight value.
+            return;
+        }
+    }
+    // accumulatedSDF is set to InvalidSDF so the first perspective that has a valid update to this must set it
+    if (accumulatedSDF >= Invalid_Sdf_compare)
+    {
+        accumulatedSDF = newWeight * sdf;
+        accumulatedWeight = newWeight;
+    }
+    else
+    {
+        // subsequent perspectives can accumulate the sdf and weight values
+        accumulatedSDF += newWeight * sdf;
+        accumulatedWeight += newWeight;
+    }
+}
+
+///////////////////////////////////
+
+[numthreads(GROUP_SIZE, GROUP_SIZE, GROUP_SIZE)]
+void GenerateVolumeSinglePass(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _VoxelGrid.x || id.y >= _VoxelGrid.y || id.z >= _VoxelGrid.z)
+        return;
+
+    float accumulatedWeight = 0.0f;
+    float accumulatedSDF = Invalid_Sdf;
+
+    float3 pos3d = scaledPosition(id);
+
+    for (uint perspectiveIndex = 0; perspectiveIndex < (uint) _PerspectivesCount; perspectiveIndex++)
+    {
+        GetSDFCamContribution(perspectiveIndex, pos3d, accumulatedWeight, accumulatedSDF);
+    }
+
+    uint linearIndexOut = linearIndex((int3) id);
+
+    if (accumulatedWeight > 0.0)
+    {
+        _SdfBuffer[linearIndexOut] = accumulatedSDF / accumulatedWeight;
+    }
+    else
+    {
+        _SdfBuffer[linearIndexOut] = Invalid_Sdf;
+    }
+}
+
+///////////////////MULTIPASS////////////////
+
+uint _CurrentPerspective;
+
+#ifdef DK_SEPARATE_WEIGHT_READONLY
+StructuredBuffer<float> _SdfWeightBuffer;
+#else
+RWStructuredBuffer<float> _SdfWeightBuffer;
+#endif
+
+void GenerateVolumeMultiPass(in uint3 id, out uint SDFIndex, inout float accumulatedSDF, inout float accumulatedWeight)
+{
+    float3 pos3d = scaledPosition(id);
+    GetSDFCamContribution(_CurrentPerspective, pos3d, accumulatedWeight, accumulatedSDF);
+    SDFIndex = linearIndex((int3) id);
+}
+
+void GenerateVolumeMultiPassAccumulate(uint3 id)
+{
+    float accumulatedWeight = 0.0f;
+    float accumulatedSDF = Invalid_Sdf;
+    uint SDFIndex;
+    
+    GenerateVolumeMultiPass(id, SDFIndex, accumulatedSDF, accumulatedWeight);
+    
+    if (accumulatedSDF < Invalid_Sdf_compare)
+    {
+        float currentSDF = _SdfBuffer[SDFIndex];
+
+        float currentWeight;
+        if (currentSDF < Invalid_Sdf_compare)
+        {
+            currentWeight = _SdfWeightBuffer[SDFIndex];
+            currentSDF += accumulatedSDF;
+            currentWeight += accumulatedWeight;
+        }
+        else
+        {
+            currentSDF = accumulatedSDF;
+            currentWeight = accumulatedWeight;
+        }
+        
+        _SdfBuffer[SDFIndex] = currentSDF;
+#ifndef DK_SEPARATE_WEIGHT_READONLY
+        _SdfWeightBuffer[SDFIndex] = currentWeight;
+#endif
+    }
+}
+
+void GenerateVolumeMultiPassResolve(uint3 id)
+{
+    float accumulatedWeight = 0.0f;
+    float accumulatedSDF = Invalid_Sdf;
+    uint SDFIndex;
+    
+    GenerateVolumeMultiPass(id, SDFIndex, accumulatedSDF, accumulatedWeight);
+    
+    float currentSDF = _SdfBuffer[linearIndex((int3) id)];
+    float currentWeight = 0.f;
+    if (accumulatedSDF < Invalid_Sdf_compare)
+    {
+        if (currentSDF < Invalid_Sdf_compare)
+        {
+            currentWeight = _SdfWeightBuffer[SDFIndex];
+            currentSDF += accumulatedSDF;
+            currentWeight += accumulatedWeight;
+        }
+        else
+        {
+            currentSDF = accumulatedSDF;
+            currentWeight = accumulatedWeight;
+        }
+        
+        if (currentWeight > 0.0f)
+        {
+            _SdfBuffer[SDFIndex] = currentSDF / currentWeight;
+        }
+    }
+    else if (currentSDF < Invalid_Sdf_compare)
+    {
+        currentWeight = _SdfWeightBuffer[SDFIndex];
+        if (currentWeight > 0.0f)
+        {
+            _SdfBuffer[SDFIndex] = currentSDF / currentWeight;
+        }
+    }
+}
+
+void GenerateVolumeMultiPassInit(uint3 id)
+{
+    float accumulatedWeight = 0.0f;
+    float accumulatedSDF = Invalid_Sdf;
+    uint SDFIndex;
+    
+    GenerateVolumeMultiPass(id, SDFIndex, accumulatedSDF, accumulatedWeight);
+    
+    if (accumulatedSDF < Invalid_Sdf_compare)
+    {
+        _SdfBuffer[SDFIndex] = accumulatedSDF;
+#ifndef DK_SEPARATE_WEIGHT_READONLY
+        _SdfWeightBuffer[SDFIndex] = accumulatedWeight;
+#endif
+    }
+    else
+    {
+        _SdfBuffer[SDFIndex] = Invalid_Sdf;
+    }
+}
+
+[numthreads(GROUP_SIZE, GROUP_SIZE, GROUP_SIZE)]
+void KGenerateVolumeMultiPassInit(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _VoxelGrid.x || id.y >= _VoxelGrid.y || id.z >= _VoxelGrid.z)
+        return;
+
+    GenerateVolumeMultiPassInit(id);
+}
+
+[numthreads(GROUP_SIZE, GROUP_SIZE, GROUP_SIZE)]
+void KGenerateVolumeMultiPassAccumulate(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _VoxelGrid.x || id.y >= _VoxelGrid.y || id.z >= _VoxelGrid.z)
+        return;
+
+    GenerateVolumeMultiPassAccumulate(id);
+}
+
+[numthreads(GROUP_SIZE, GROUP_SIZE, GROUP_SIZE)]
+void KGenerateVolumeMultiPassResolve(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= _VoxelGrid.x || id.y >= _VoxelGrid.y || id.z >= _VoxelGrid.z)
+        return;
+    
+    GenerateVolumeMultiPassResolve(id);
+}

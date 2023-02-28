@@ -1,0 +1,19 @@
+{
+    "name": "Depthkit.Studio.Editor",
+    "references": [
+        "GUID:d757665d4a59fe94bab8bd5391e60e3d",
+        "GUID:24074500c51871f48bb3112a39fc1e55",
+        "GUID:7ec71480072be074c8f90dd646706fad"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

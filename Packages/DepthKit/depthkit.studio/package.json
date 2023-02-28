@@ -1,0 +1,27 @@
+{
+  "name": "nyc.scatter.depthkit.studio",
+  "version": "0.8.3",
+  "displayName": "Depthkit Studio",
+  "description": "Use the Depthkit Studio Package to render Depthkit captures from Depthkit Studio in Unity’s Built-in Render Pipeline. The Depthkit Studio package suite is designed to render multi-perspective captures from Depthkit Studio. For single-perspective captures from Depthkit Core or Depthkit Cinema, use Depthkit Core package suite.",
+  "unity": "2020.3",
+  "dependencies": {
+    "nyc.scatter.depthkit.core" : "0.12.2"
+  },
+  "samples": [
+    {
+      "displayName": "Prefabs - Depthkit Studio Built-in",
+      "description": "Prefabs for the Built-in Render Pipeline",
+      "path": "Samples~/Depthkit Studio Built-in Prefabs"
+    }
+  ],
+  "keywords": [
+    "Depthkit",
+    "Volumetric",
+    "Scatter"
+  ],
+  "author": {
+    "name": "Scatter",
+    "email": "support@depthkit.tv",
+    "url": "https://www.depthkit.tv"
+  }
+}
